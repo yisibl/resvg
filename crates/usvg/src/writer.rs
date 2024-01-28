@@ -1313,6 +1313,9 @@ impl XmlWriterExt for XmlWriter {
                 svg_string = tree.to_string(&XmlOptions::default());
                 ("svg+xml", svg_string.as_bytes())
             }
+            usvg_tree::ImageKind::HOLE(url) => {
+                ("hole", url.as_bytes())
+            }
         };
 
         self.write_attribute_raw("xlink:href", |buf| {

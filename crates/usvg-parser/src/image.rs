@@ -140,6 +140,8 @@ pub(crate) fn convert(node: SvgNode, state: &converter::State, parent: &mut Grou
                 .and_then(|size| Size::from_wh(size.width as f32, size.height as f32))
                 .log_none(|| log::warn!("Image has an invalid size. Skipped."))?
         }
+        // NOTE(CGQAQ): 0 will not work, so 1 here
+        ImageKind::HOLE(_) => Size::from_wh(1f32, 1f32)?,
         ImageKind::SVG(ref svg) => svg.size,
     };
 

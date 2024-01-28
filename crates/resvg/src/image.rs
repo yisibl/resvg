@@ -70,6 +70,7 @@ mod raster_images {
     fn decode_raster(image: &usvg::Image) -> Option<tiny_skia::Pixmap> {
         match image.kind {
             usvg::ImageKind::SVG(_) => None,
+            usvg::ImageKind::HOLE(_) => None,
             usvg::ImageKind::JPEG(ref data) => {
                 decode_jpeg(data).log_none(|| log::warn!("Failed to decode a JPEG image."))
             }

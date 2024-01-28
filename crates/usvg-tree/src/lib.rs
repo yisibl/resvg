@@ -1230,6 +1230,8 @@ pub enum ImageKind {
     GIF(Arc<Vec<u8>>),
     /// A preprocessed SVG tree. Can be rendered as is.
     SVG(Tree),
+    /// Need load manually later
+    HOLE(String),
 }
 
 impl std::fmt::Debug for ImageKind {
@@ -1239,6 +1241,7 @@ impl std::fmt::Debug for ImageKind {
             ImageKind::PNG(_) => f.write_str("ImageKind::PNG(..)"),
             ImageKind::GIF(_) => f.write_str("ImageKind::GIF(..)"),
             ImageKind::SVG(_) => f.write_str("ImageKind::SVG(..)"),
+            ImageKind::HOLE(_) => f.write_str("ImageKind::HOLE(..)"),
         }
     }
 }
