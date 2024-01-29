@@ -1304,14 +1304,17 @@ impl XmlWriterExt for XmlWriter {
     }
 
     fn write_image_data(&mut self, kind: &usvg_tree::ImageKind) {
-        let svg_string;
+        let mut buf = vec![];
         let (mime, data) = match kind {
             usvg_tree::ImageKind::JPEG(ref data) => ("jpeg", data.as_slice()),
             usvg_tree::ImageKind::PNG(ref data) => ("png", data.as_slice()),
             usvg_tree::ImageKind::GIF(ref data) => ("gif", data.as_slice()),
-            usvg_tree::ImageKind::SVG(ref tree) => {
-                svg_string = tree.to_string(&XmlOptions::default());
-                ("svg+xml", svg_string.as_bytes())
+            usvg_tree::ImageKind::SVG(ref tree) => ("svg+xml", tree.as_slice()),
+            usvg_tree::ImageKind::RAW(w, h, data) => {
+                buf.extend_from_slice(&w.to_be_bytes());
+                buf.extend_from_slice(&h.to_be_bytes());
+                buf.extend_from_slice(&data.as_slice());
+                ("raw", buf.as_slice())
             }
         };
 

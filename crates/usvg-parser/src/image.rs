@@ -57,12 +57,23 @@ impl ImageHrefResolver {
                 "image/jpg" | "image/jpeg" => Some(ImageKind::JPEG(data)),
                 "image/png" => Some(ImageKind::PNG(data)),
                 "image/gif" => Some(ImageKind::GIF(data)),
-                "image/svg+xml" => load_sub_svg(&data, opts),
+                "image/raw" => {
+                    use std::io::Read;
+                    let mut buf = data.as_slice();
+                    let mut width_vec = [0u8; 4];
+                    let mut height_vec = [0u8; 4];
+                    buf.read_exact(&mut width_vec).ok()?;
+                    buf.read_exact(&mut height_vec).ok()?;
+                    let width: u32 = u32::from_be_bytes(width_vec);
+                    let height: u32 = u32::from_be_bytes(height_vec);
+                    Some(ImageKind::RAW(width, height, Arc::new(buf.to_vec())))
+                }
+                "image/svg+xml" => Some(ImageKind::SVG(Arc::new(data.to_vec()))),
                 "text/plain" => match get_image_data_format(&data) {
                     Some(ImageFormat::JPEG) => Some(ImageKind::JPEG(data)),
                     Some(ImageFormat::PNG) => Some(ImageKind::PNG(data)),
                     Some(ImageFormat::GIF) => Some(ImageKind::GIF(data)),
-                    _ => load_sub_svg(&data, opts),
+                    _ => Some(ImageKind::SVG(Arc::new(data.to_vec()))),
                 },
                 _ => None,
             },
@@ -93,7 +104,7 @@ impl ImageHrefResolver {
                     Some(ImageFormat::JPEG) => Some(ImageKind::JPEG(Arc::new(data))),
                     Some(ImageFormat::PNG) => Some(ImageKind::PNG(Arc::new(data))),
                     Some(ImageFormat::GIF) => Some(ImageKind::GIF(Arc::new(data))),
-                    Some(ImageFormat::SVG) => load_sub_svg(&data, opts),
+                    Some(ImageFormat::SVG) => Some(ImageKind::SVG(Arc::new(data))),
                     _ => {
                         log::warn!("'{}' is not a PNG, JPEG, GIF or SVG(Z) image.", href);
                         None
@@ -141,6 +152,8 @@ pub(crate) fn convert(node: SvgNode, state: &converter::State, parent: &mut Grou
                 .log_none(|| log::warn!("Image has an invalid size. Skipped."))?
         }
         ImageKind::SVG(ref svg) => svg.size,
+        ImageKind::RAW(width, height, _) => Size::from_wh(width as f32, height as f32)
+            .log_none(|| log::warn!("Image has an invalid size. Skipped."))?,
     };
 
     let rect = NonZeroRect::from_xywh(
@@ -225,7 +238,38 @@ fn get_image_data_format(data: &[u8]) -> Option<ImageFormat> {
 ///
 /// Unlike `Tree::from_*` methods, this one will also remove all `image` elements
 /// from the loaded SVG, as required by the spec.
-pub(crate) fn load_sub_svg(data: &[u8], opt: &Options) -> Option<ImageKind> {
+// pub(crate) fn load_sub_svg(data: &[u8], opt: &Options) -> Option<ImageKind> {
+//     let mut sub_opt = Options::default();
+//     sub_opt.resources_dir = None;
+//     sub_opt.dpi = opt.dpi;
+//     sub_opt.font_size = opt.font_size;
+//     sub_opt.languages = opt.languages.clone();
+//     sub_opt.shape_rendering = opt.shape_rendering;
+//     sub_opt.text_rendering = opt.text_rendering;
+//     sub_opt.image_rendering = opt.image_rendering;
+//     sub_opt.default_size = opt.default_size;
+
+//     // The referenced SVG image cannot have any 'image' elements by itself.
+//     // Not only recursive. Any. Don't know why.
+//     sub_opt.image_href_resolver = ImageHrefResolver {
+//         resolve_data: Box::new(|_, _, _| None),
+//         resolve_string: Box::new(|_, _| None),
+//     };
+
+//     let mut tree = match Tree::from_data(data, &sub_opt) {
+//         Ok(tree) => tree,
+//         Err(_) => {
+//             log::warn!("Failed to load subsvg image.");
+//             return None;
+//         }
+//     };
+//     tree.calculate_abs_transforms();
+//     tree.calculate_bounding_boxes();
+
+//     Some(ImageKind::SVG(tree))
+// }
+
+pub fn load_sub_svg(data: &[u8], opt: &Options) -> Option<Tree> {
     let mut sub_opt = Options::default();
     sub_opt.resources_dir = None;
     sub_opt.dpi = opt.dpi;
@@ -253,5 +297,5 @@ pub(crate) fn load_sub_svg(data: &[u8], opt: &Options) -> Option<ImageKind> {
     tree.calculate_abs_transforms();
     tree.calculate_bounding_boxes();
 
-    Some(ImageKind::SVG(tree))
+    Some(tree)
 }

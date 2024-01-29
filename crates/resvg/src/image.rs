@@ -2,6 +2,7 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
+use usvg::load_sub_svg;
 use crate::render::TinySkiaPixmapMutExt;
 
 pub fn render(
@@ -14,9 +15,9 @@ pub fn render(
     }
 
     match image.kind {
-        usvg::ImageKind::SVG(ref tree) => {
-            render_vector(image, tree, transform, pixmap);
-        }
+        usvg::ImageKind::SVG(ref data) => ImageKind::Vector(Tree::from_usvg(
+            &load_sub_svg(&data, &usvg::Options::default()).unwrap(),
+        )),
         #[cfg(feature = "raster-images")]
         _ => {
             raster_images::render_raster(image, transform, pixmap);
@@ -78,6 +79,9 @@ mod raster_images {
             }
             usvg::ImageKind::GIF(ref data) => {
                 decode_gif(data).log_none(|| log::warn!("Failed to decode a GIF image."))
+            }
+            usvg::ImageKind::RAW(w, h, ref data) => {
+                tiny_skia::Pixmap::from_vec((&**data).clone(), tiny_skia::IntSize::from_wh(w, h)?)
             }
         }
     }
