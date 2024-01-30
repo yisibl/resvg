@@ -68,12 +68,14 @@ impl ImageHrefResolver {
                     let height: u32 = u32::from_be_bytes(height_vec);
                     Some(ImageKind::RAW(width, height, Arc::new(buf.to_vec())))
                 }
-                "image/svg+xml" => Some(ImageKind::SVG(Arc::new(data.to_vec()))),
+                "image/svg+xml" => load_sub_svg(&data, opts)
+                    .log_none(|| log::warn!("Failed to load '{}'. Skipped.", mime)),
                 "text/plain" => match get_image_data_format(&data) {
                     Some(ImageFormat::JPEG) => Some(ImageKind::JPEG(data)),
                     Some(ImageFormat::PNG) => Some(ImageKind::PNG(data)),
                     Some(ImageFormat::GIF) => Some(ImageKind::GIF(data)),
-                    _ => Some(ImageKind::SVG(Arc::new(data.to_vec()))),
+                    _ => load_sub_svg(&data, opts)
+                        .log_none(|| log::warn!("Failed to load '{}'. Skipped.", mime)),
                 },
                 _ => None,
             },
@@ -104,7 +106,8 @@ impl ImageHrefResolver {
                     Some(ImageFormat::JPEG) => Some(ImageKind::JPEG(Arc::new(data))),
                     Some(ImageFormat::PNG) => Some(ImageKind::PNG(Arc::new(data))),
                     Some(ImageFormat::GIF) => Some(ImageKind::GIF(Arc::new(data))),
-                    Some(ImageFormat::SVG) => Some(ImageKind::SVG(Arc::new(data))),
+                    Some(ImageFormat::SVG) => load_sub_svg(&data, opts)
+                        .log_none(|| log::warn!("Failed to load '{}'. Skipped.", href)),
                     _ => {
                         log::warn!("'{}' is not a PNG, JPEG, GIF or SVG(Z) image.", href);
                         None
@@ -269,7 +272,7 @@ fn get_image_data_format(data: &[u8]) -> Option<ImageFormat> {
 //     Some(ImageKind::SVG(tree))
 // }
 
-pub fn load_sub_svg(data: &[u8], opt: &Options) -> Option<Tree> {
+pub fn load_sub_svg(data: &[u8], opt: &Options) -> Option<ImageKind> {
     let mut sub_opt = Options::default();
     sub_opt.resources_dir = None;
     sub_opt.dpi = opt.dpi;
@@ -297,5 +300,5 @@ pub fn load_sub_svg(data: &[u8], opt: &Options) -> Option<Tree> {
     tree.calculate_abs_transforms();
     tree.calculate_bounding_boxes();
 
-    Some(tree)
+    Some(ImageKind::SVG(tree))
 }

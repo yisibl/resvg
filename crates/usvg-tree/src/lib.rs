@@ -1229,7 +1229,7 @@ pub enum ImageKind {
     /// A reference to raw GIF data. Should be decoded by the caller.
     GIF(Arc<Vec<u8>>),
     /// A preprocessed SVG tree. Can be rendered as is.
-    SVG(Arc<Vec<u8>>),
+    SVG(Tree),
     /// RAW image data
     RAW(u32, u32, Arc<Vec<u8>>),
 }
